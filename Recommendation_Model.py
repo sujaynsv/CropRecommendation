@@ -10,13 +10,7 @@ import matplotlib.pyplot as plt
 from flask_cors import CORS
 # Initialize Flask app
 app = Flask(__name__)
-CORS(app, resources={r"/*": {"origins": "*"}})
-@app.after_request
-def add_cors_headers(response):
-    response.headers["Access-Control-Allow-Origin"] = "*"
-    response.headers["Access-Control-Allow-Methods"] = "GET, POST, OPTIONS"
-    response.headers["Access-Control-Allow-Headers"] = "Content-Type, Authorization"
-    return response
+CORS(app, origins="*")
 
 crop = pd.read_csv("Crop_recommendation.csv")
 crop_dict = {
@@ -44,8 +38,15 @@ randclf.fit(X_train_crop, y_train_crop)
 
 
 # Crop Recommendation Endpoint
-@app.route('/recommend-crop', methods=['POST'])
+@app.route('/recommend-crop', methods=['POST','OPTIONS'])
 def recommend_crop():
+    if request.method == "OPTIONS":
+        response = jsonify({'message': 'CORS preflight successful'})
+        response.headers.add("Access-Control-Allow-Origin", "*")
+        response.headers.add("Access-Control-Allow-Headers", "Content-Type")
+        response.headers.add("Access-Control-Allow-Methods", "POST, OPTIONS")
+        return response, 200
+
     data = request.json
     try:
         features = np.array(
@@ -66,6 +67,10 @@ def recommend_crop():
             'prediction': top_3_crops,
             'accuracy': accuracy_score(y_test_crop, randclf.predict(X_test_crop))
         })
+
+        response.headers.add("Access-Control-Allow-Methods", "POST")
+        response.headers.add("Access-Control-Allow-Origin", "*")
+        response.headers.add("Access-Control-Allow-Headers", "Content-Type")
     except (ValueError, KeyError) as e:
         return jsonify({'error': 'Invalid input', 'message': str(e)}), 400
 
